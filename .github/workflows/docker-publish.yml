@@ -17,6 +17,8 @@ on:
     tags: [ 'v*.*.*' ]
   pull_request:
     types: [opened, labeled, unlabeled, synchronize]
+  workflow_dispatch:
+    
 
 env:
   # Use docker.io for Docker Hub if empty
