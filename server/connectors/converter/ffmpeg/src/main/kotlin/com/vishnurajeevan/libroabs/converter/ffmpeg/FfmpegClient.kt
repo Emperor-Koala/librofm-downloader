@@ -169,6 +169,63 @@ class FfmpegClient(
     }
   }
 
+  suspend fun renameM4bChapters(m4bFile: File, tracks: List<Tracks>) {
+    val chapters = getFileInfo(m4bFile).chapters
+    if (chapters.isEmpty()) {
+      lfdLogger.v("No chapters found in ${m4bFile.name}, skipping chapter rename")
+      return
+    }
+
+    val sortedTracks = tracks.sortedBy { it.number }
+    if (sortedTracks.size != chapters.size || sortedTracks.any { it.chapter_title == null }) {
+      lfdLogger.v("Track/chapter mismatch for ${m4bFile.name}, skipping chapter rename")
+      return
+    }
+
+    val total = sortedTracks.size
+    val newTitles = sortedTracks.map { track ->
+      "${track.number.toString().padStart(total.toString().length, '0')} - ${track.chapter_title}"
+    }
+
+    val metadataFile = File(m4bFile.parentFile, "chapters.txt")
+    metadataFile.bufferedWriter().use { writer ->
+      writer.write(";FFMETADATA1\n")
+      chapters.forEachIndexed { index, chapter ->
+        writer.write("[CHAPTER]\n")
+        writer.write("TIMEBASE=${chapter.time_base}\n")
+        writer.write("START=${chapter.start}\n")
+        writer.write("END=${chapter.end}\n")
+        writer.write("title=${escapeFfmetadataValue(newTitles[index])}\n")
+        writer.newLine()
+      }
+    }
+
+    val tempFile = File(m4bFile.parentFile, "${m4bFile.nameWithoutExtension}.chapters-tmp.${m4bFile.extension}")
+
+    // input 0 = new chapter titles, input 1 = existing m4b (streams/tags kept, chapters replaced).
+    // Map audio/video explicitly (not "-map 1") to skip the muxer's own hidden chapter text track,
+    // which otherwise conflicts with the new chapters being mapped in from input 0.
+    val builder = FFmpegBuilder()
+      .addExtraArgs("-f", "ffmetadata", "-i", metadataFile.absolutePath)
+      .addInput(m4bFile.absolutePath)
+      .addOutput(tempFile.absolutePath)
+      .setAudioCodec("copy")
+      .setVideoCodec("copy")
+      .addExtraArgs("-map", "1:a")
+      .addExtraArgs("-map", "1:v?")
+      .addExtraArgs("-disposition:v:0", "attached_pic")
+      .addExtraArgs("-map_metadata", "1")
+      .addExtraArgs("-map_chapters", "0")
+      .done()
+
+    executor.createJob(builder).run()
+
+    metadataFile.delete()
+    Files.move(tempFile.toPath(), m4bFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+
+    lfdLogger.v("Renamed chapters for ${m4bFile.name}")
+  }
+
   private fun getFileInfo(file: File): FFmpegProbeResult {
     return ffprobe.probe(file.absolutePath)
   }
@@ -189,5 +246,15 @@ class FfmpegClient(
 
   private fun escapeMetadataValue(value: String): String {
     return value.replace("\"", "\\\"").trim()  // Replace " with ' and trim spaces
+  }
+
+  private fun escapeFfmetadataValue(value: String): String {
+    // ffmetadata has no quoting; '=', ';', '#', '\' and newlines must be backslash-escaped instead.
+    return value
+      .replace("\\", "\\\\")
+      .replace("=", "\\=")
+      .replace(";", "\\;")
+      .replace("#", "\\#")
+      .replace("\n", "\\\n")
   }
 }

@@ -105,7 +105,7 @@ class LibroApiHandler(
     }
   }
 
-  suspend fun downloadM4b(m4bUrl: String, targetDirectory: File) {
+  suspend fun downloadM4b(m4bUrl: String, targetDirectory: File): File? {
     if (!dryRun) {
       lfdLogger.v("Downloading M4B: $m4bUrl")
       val url = Url(m4bUrl)
@@ -115,8 +115,11 @@ class LibroApiHandler(
       val match = filenameRegex.find(contentDisposition)
 
       val filename = match?.groupValues?.getOrNull(1)?.replace("+", " ")
-      downloadFile(url, File(targetDirectory, filename!!),)
+      val destinationFile = File(targetDirectory, filename!!)
+      downloadFile(url, destinationFile)
+      return destinationFile
     }
+    return null
   }
 
   suspend fun downloadMp3s(data: List<DownloadPart>, targetDirectory: File) {

@@ -452,7 +452,11 @@ class App(
   ): Result<Unit> {
     val m4bMetadata = libroClient.fetchM4bMetadata(book.isbn)
     if (m4bMetadata.isSuccess) {
-      libroClient.downloadM4b(m4bMetadata.getOrThrow().m4b_url, targetDir)
+      val m4bFile = libroClient.downloadM4b(m4bMetadata.getOrThrow().m4b_url, targetDir)
+      if (serverInfo.renameChapters && m4bFile != null) {
+        val tracks = libroClient.fetchMp3DownloadMetadata(book.isbn).tracks
+        ffmpegClient.renameM4bChapters(m4bFile, tracks)
+      }
       return Result.success(Unit)
     } else {
       return Result.failure(Exception("M4B Not Found"))
