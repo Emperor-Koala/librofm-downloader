@@ -24,6 +24,7 @@ RUN apk add --no-cache \
       curl \
       ffmpeg \
       tini \
+      su-exec \
  && rm -rf /var/cache/* \
  && mkdir /var/cache/apk
 
@@ -48,6 +49,8 @@ ENV \
 WORKDIR /app
 COPY scripts/run.sh ./
 COPY --from=build /app/server/app/build/install/app ./
+
+RUN mkdir -p /data /media
 
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["/app/run.sh"]
