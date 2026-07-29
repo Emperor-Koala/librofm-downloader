@@ -13,10 +13,11 @@ The tool is set to recheck the library every day and download new books. Books w
 - `MP3` will download and unzip MP3s.
 
 
-#### `MP3` / `M4B_MP3_FALLBACK` - Extra - Rename Chapters / Write Title Tag
+#### Extra - Rename Chapters / Write Title Tag
 
-Enable `RENAME_CHAPTERS` to rename files from `Track - #.mp3` to `### <Book Title> - <Chapter Title>` as provided by libro.fm
-Additionally, if you enable `WRITE_TITLE_TAG`, each track's ID3 `title` field will be set to `### <Chapter Title>` as provided by libro.fm.
+Enable `RENAME_CHAPTERS` to rename chapters using the titles provided by libro.fm.
+- For `MP3` (and the MP3 fallback of `M4B_MP3_FALLBACK`), files are renamed from `Track - #.mp3` to `### <Book Title> - <Chapter Title>`. Additionally, if you enable `WRITE_TITLE_TAG`, each track's ID3 `title` field will be set to `### <Chapter Title>`.
+- For a pre-packaged M4B (from `M4B_MP3_FALLBACK` or `M4B_CONVERT_FALLBACK`), the file's internal chapter titles are rewritten in place to `### <Chapter Title>`, keeping the original chapter timing. `WRITE_TITLE_TAG` has no effect on M4Bs.
 
 ----
 
@@ -85,9 +86,8 @@ services:
       - PARALLEL_COUNT="2" #increase parallel processing limit, default is 1, careful with memory usage!
       - LOG_LEVEL="NONE/INFO/VERBOSE"
       - SYNC_INTERVAL="h/d/w" #choose one
-      # MP3 / M4B_MP3_FALLBACK only
-      - RENAME_CHAPTERS=true #renames downloaded files with the chapter name provided by libro.fm
-      - WRITE_TITLE_TAG=true #this one requires RENAME_CHAPTERS to be true as well
+      - RENAME_CHAPTERS=true #renames chapters (mp3 filenames, or m4b chapter titles) with the chapter name provided by libro.fm
+      - WRITE_TITLE_TAG=true #MP3 only, requires RENAME_CHAPTERS to be true as well
       - HARDCOVER_TOKEN=<>
       - SKIP_TRACKING_ISBNS=<>
       - HEALTHCHECK_ID=<>
